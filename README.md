@@ -9,7 +9,7 @@
 
 ### Open AI API adapter for the DecodeLabs Prophet assistant system
 
-Prophet Openai provides ...
+This package provides a Prophet adapter for the Open AI API, allowing you to easily create assistant interfaces using Open AI's chat models.
 
 _Get news and updates on the [DecodeLabs blog](https://blog.decodelabs.com)._
 
@@ -29,4 +29,4 @@ Coming soon...
 
 ## Licensing
 
-Prophet Openai is licensed under the MIT License. See [LICENSE](./LICENSE) for the full license text.
+Prophet OpenAI is licensed under the MIT License. See [LICENSE](./LICENSE) for the full license text.
