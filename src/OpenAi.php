@@ -22,6 +22,8 @@ use OpenAI\Client as OpenAIClient;
 
 class OpenAi implements Platform
 {
+    public const FALLBACK_MODEL = 'gpt-3.5-turbo';
+
     protected OpenAIClient $client;
 
     public function __construct(
@@ -98,7 +100,7 @@ class OpenAi implements Platform
             Medium::Code => match ($level) {
                 LanguageModelLevel::Basic,
                 LanguageModelLevel::Standard => 'gpt-3.5-turbo',
-                LanguageModelLevel::Advanced => 'gpt-4.0-turbo'
+                LanguageModelLevel::Advanced => 'gpt-4'
             },
 
             Medium::Image => 'dall-e-3',
@@ -107,24 +109,22 @@ class OpenAi implements Platform
         };
     }
 
-
     /**
-     * Create new assistant structure
+     * Suggest if language model should be updated
      */
-    public function createAssistant(
-        Assistant $assistant
-    ): void {
-        $response = $this->client->assistants()->create([
-            'name' => $assistant->getName(),
-            'instructions' => $assistant->getInstructions(),
-            'description' => $assistant->getDescription(),
-            'model' => $assistant->getLanguageModelName() ?? 'gpt-3.5-turbo',
-            'metadata' => [
-                'action' => $assistant->getAction()
-            ]
-        ]);
-
-        $assistant->setServiceId($response->id);
+    public function shouldUpdateModel(
+        string $oldModel,
+        string $newModel,
+        Medium $medium,
+        LanguageModelLevel $level = LanguageModelLevel::Standard,
+        array $features = []
+    ): bool {
+        return match ($oldModel) {
+            'gpt-3.5-turbo' => true,
+            //'gpt-4' => $newModel === 'gpt-4o',
+            'gpt-4o' => false,
+            default => true
+        };
     }
 
     /**
@@ -140,7 +140,10 @@ class OpenAi implements Platform
         $action = $assistant->getAction();
 
         foreach ($response->data as $result) {
-            if (($result->metadata['action'] ?? null) === $action) {
+            if (
+                ($result->metadata['action'] ?? null) === $action &&
+                ($result->metadata['model'] ?? $result->model) === ($assistant->getLanguageModelName() ?? self::FALLBACK_MODEL)
+            ) {
                 if ($result->name !== null) {
                     $assistant->setName($result->name);
                 }
@@ -157,6 +160,68 @@ class OpenAi implements Platform
         }
 
         return false;
+    }
+
+    /**
+     * Create new assistant structure
+     */
+    public function createAssistant(
+        Assistant $assistant
+    ): void {
+        $response = $this->client->assistants()->create([
+            'name' => $assistant->getName(),
+            'instructions' => $assistant->getInstructions(),
+            'description' => $assistant->getDescription(),
+            'model' => $model = $assistant->getLanguageModelName() ?? self::FALLBACK_MODEL,
+            'metadata' => [
+                'action' => $assistant->getAction(),
+                'model' => $model
+            ]
+        ]);
+
+        $assistant->setServiceId($response->id);
+        $assistant->setCreatedAt(Carbon::now());
+        $assistant->setUpdatedAt(Carbon::now());
+    }
+
+    /**
+     * Update assistant model if needed
+     */
+    public function updateAssistant(
+        Assistant $assistant
+    ): bool {
+        if (null === ($serviceId = $assistant->getServiceId())) {
+            return false;
+        }
+
+        $response = $this->client->assistants()->modify($serviceId, [
+            'name' => $assistant->getName(),
+            'instructions' => $assistant->getInstructions(),
+            'description' => $assistant->getDescription() ?? '',
+            'model' => $assistant->getLanguageModelName() ?? self::FALLBACK_MODEL,
+            'metadata' => [
+                'action' => $assistant->getAction(),
+                'model' => $assistant->getLanguageModelName()
+            ]
+        ]);
+
+        $assistant->setLanguageModelName($response->model);
+        $assistant->setUpdatedAt(Carbon::now());
+        return true;
+    }
+
+    /**
+     * Delete assistant
+     */
+    public function deleteAssistant(
+        Assistant $assistant
+    ): bool {
+        if (null === ($serviceId = $assistant->getServiceId())) {
+            return false;
+        }
+
+        $response = $this->client->assistants()->delete($serviceId);
+        return $response->deleted;
     }
 
     /**
@@ -235,6 +300,20 @@ class OpenAi implements Platform
 
         $thread->setRawStatus($response->status);
         $thread->setStatus($this->normalizeStatus($response->status));
+    }
+
+    /**
+     * Delete thread
+     */
+    public function deleteThread(
+        Thread $thread
+    ): bool {
+        if (null === ($serviceId = $thread->getServiceId())) {
+            return false;
+        }
+
+        $response = $this->client->threads()->delete($serviceId);
+        return $response->deleted;
     }
 
     /**
