@@ -12,6 +12,10 @@ namespace DecodeLabs\Prophet\Platform;
 use Carbon\Carbon;
 use DecodeLabs\Exceptional;
 use DecodeLabs\Prophet\Model\Assistant;
+use DecodeLabs\Prophet\Model\Content;
+use DecodeLabs\Prophet\Model\Message;
+use DecodeLabs\Prophet\Model\MessageList;
+use DecodeLabs\Prophet\Model\Role;
 use DecodeLabs\Prophet\Model\RunStatus;
 use DecodeLabs\Prophet\Model\Thread;
 use DecodeLabs\Prophet\Platform;
@@ -19,6 +23,7 @@ use DecodeLabs\Prophet\Service\Feature;
 use DecodeLabs\Prophet\Service\LanguageModelLevel;
 use DecodeLabs\Prophet\Service\Medium;
 use OpenAI\Client as OpenAIClient;
+use OpenAI\Responses\Threads\Messages\ThreadMessageResponse;
 
 class OpenAi implements Platform
 {
@@ -321,34 +326,28 @@ class OpenAi implements Platform
      */
     public function fetchMessages(
         Thread $thread,
-        ?string $afterId = null,
-        int $limit = 20
-    ): array {
+        int $limit = 20,
+        string|int|null $after = null
+    ): MessageList {
         if (null === ($serviceId = $thread->getServiceId())) {
-            return [];
+            return new MessageList();
         }
 
         $response = $this->client->threads()->messages()->list($serviceId, [
-            'before' => $afterId,
+            'before' => $after,
             'limit' => $limit
         ]);
 
-        $output = [
-            'hasMore' => $response->hasMore,
-            'lastMessage' => $response->lastId,
-            'messages' => []
-        ];
+        $messageList = new MessageList(
+            $response->hasMore,
+            $response->lastId
+        );
 
-        foreach (array_reverse($response->data) as $message) {
-            $output['messages'][] = [
-                'id' => $message->id,
-                'createdAt' => $message->createdAt,
-                'role' => $message->role,
-                'content' => $message->toArray()['content']
-            ];
+        foreach (array_reverse($response->data) as $messageData) {
+            $messageList->addMessage($this->createMessage($messageData));
         }
 
-        return $output;
+        return $messageList;
     }
 
     /**
@@ -358,7 +357,7 @@ class OpenAi implements Platform
         Assistant $assistant,
         Thread $thread,
         string $message
-    ): array {
+    ): Message {
         if (null === ($serviceId = $thread->getServiceId())) {
             throw Exceptional::InvalidArgument(
                 'Thread has not been started'
@@ -384,13 +383,41 @@ class OpenAi implements Platform
         $thread->setRawStatus($runResponse->status);
         $thread->setStatus($this->normalizeStatus($runResponse->status));
 
+        return $this->createMessage($messageResponse);
+    }
 
-        return [
-            'id' => $messageResponse->id,
-            'createdAt' => $messageResponse->createdAt,
-            'role' => $messageResponse->role,
-            'content' => $messageResponse->toArray()['content']
-        ];
+    protected function createMessage(
+        ThreadMessageResponse $response
+    ): Message {
+        $message = new Message(
+            $response->id,
+            Carbon::createFromTimestamp($response->createdAt),
+            match ($response->role) {
+                'assistant' => Role::Assistant,
+                'system' => Role::System,
+                'user' => Role::User,
+                default => throw Exceptional::Runtime('Unsupported role')
+            }
+        );
+
+        foreach ($response->content as $contentData) {
+            $content = match ($contentData->type) {
+                'text' => new Content\Text(
+                    /** @phpstan-ignore-next-line */
+                    $contentData->text->value
+                ),
+                'image' => new Content\File(
+                    /** @phpstan-ignore-next-line */
+                    $contentData->imageFile->fileId,
+                    Medium::Image
+                ),
+                default => throw Exceptional::Runtime('Unsupported content type')
+            };
+
+            $message->addContent($content);
+        }
+
+        return $message;
     }
 
     /**
