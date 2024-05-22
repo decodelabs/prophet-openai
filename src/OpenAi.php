@@ -297,6 +297,12 @@ class OpenAi implements Platform
 
         $thread->setUpdatedAt(Carbon::now());
 
+        $thread->setStartedAt(
+            $response->startedAt ?
+                Carbon::createFromTimestamp($response->startedAt) :
+                null
+        );
+
         $thread->setCompletedAt(
             $response->completedAt ?
                 Carbon::createFromTimestamp($response->completedAt) :

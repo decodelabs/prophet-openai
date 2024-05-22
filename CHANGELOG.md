@@ -1,4 +1,5 @@
-* Fixed expiry date in thread refresh
+* Update start date on Thread refresh
+* Fixed expiry date in Thread refresh
 
 ## v0.2.1 (2024-05-22)
 * Added support for Prophet v0.4
