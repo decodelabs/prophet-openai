@@ -1,3 +1,5 @@
+* Addded support for Prophet v0.4
+
 ## v0.2.0 (2024-05-21)
 * Updated to support Prophet v0.3
 * Implemented Message model structure
