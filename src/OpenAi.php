@@ -257,15 +257,15 @@ class OpenAi implements Platform
                 null
         );
 
-        $thread->setExpiresAt(
-            $response->expiresAt ?
-                Carbon::createFromTimestamp($response->expiresAt) :
-                null
-        );
-
         $thread->setCompletedAt(
             $response->completedAt ?
                 Carbon::createFromTimestamp($response->completedAt) :
+                null
+        );
+
+        $thread->setExpiresAt(
+            $response->expiresAt ?
+                Carbon::createFromTimestamp($response->expiresAt) :
                 null
         );
 
@@ -297,9 +297,21 @@ class OpenAi implements Platform
 
         $thread->setUpdatedAt(Carbon::now());
 
+        $thread->setStartedAt(
+            $response->startedAt ?
+                Carbon::createFromTimestamp($response->startedAt) :
+                null
+        );
+
         $thread->setCompletedAt(
             $response->completedAt ?
                 Carbon::createFromTimestamp($response->completedAt) :
+                null
+        );
+
+        $thread->setExpiresAt(
+            $response->expiresAt ?
+                Carbon::createFromTimestamp($response->expiresAt) :
                 null
         );
 

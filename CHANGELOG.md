@@ -1,5 +1,10 @@
+## v0.2.2 (2024-06-11)
+* Updated OpenAI API
+* Update start date on Thread refresh
+* Fixed expiry date in Thread refresh
+
 ## v0.2.1 (2024-05-22)
-* Addded support for Prophet v0.4
+* Added support for Prophet v0.4
 
 ## v0.2.0 (2024-05-21)
 * Updated to support Prophet v0.3
