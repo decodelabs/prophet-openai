@@ -1,3 +1,4 @@
+* Updated OpenAI API
 * Update start date on Thread refresh
 * Fixed expiry date in Thread refresh
 
