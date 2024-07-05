@@ -23,6 +23,7 @@ use DecodeLabs\Prophet\Service\Feature;
 use DecodeLabs\Prophet\Service\LanguageModelLevel;
 use DecodeLabs\Prophet\Service\Medium;
 use OpenAI\Client as OpenAIClient;
+use OpenAI\Exceptions\ErrorException as OpenAIErrorException;
 use OpenAI\Responses\Threads\Messages\ThreadMessageResponse;
 
 class OpenAi implements Platform
@@ -225,7 +226,16 @@ class OpenAi implements Platform
             return false;
         }
 
-        $response = $this->client->assistants()->delete($serviceId);
+        try {
+            $response = $this->client->assistants()->delete($serviceId);
+        } catch (OpenAIErrorException $e) {
+            if (str_starts_with($e->getMessage(), 'No assistant found with')) {
+                return true;
+            }
+
+            throw $e;
+        }
+
         return $response->deleted;
     }
 
@@ -329,7 +339,15 @@ class OpenAi implements Platform
             return false;
         }
 
-        $response = $this->client->threads()->delete($serviceId);
+        try {
+            $response = $this->client->threads()->delete($serviceId);
+        } catch (OpenAIErrorException $e) {
+            if (str_starts_with($e->getMessage(), 'No thread found with')) {
+                return true;
+            }
+
+            throw $e;
+        }
         return $response->deleted;
     }
 
