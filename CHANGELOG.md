@@ -1,3 +1,4 @@
+## v0.2.3 (2024-07-05)
 * Catch not-found errors in delete methods
 
 ## v0.2.2 (2024-06-11)
