@@ -1,3 +1,5 @@
+* Catch not-found errors in delete methods
+
 ## v0.2.2 (2024-06-11)
 * Updated OpenAI API
 * Update start date on Thread refresh
