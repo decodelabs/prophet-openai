@@ -103,10 +103,11 @@ class OpenAi implements Platform
     ): string {
         return match ($medium) {
             Medium::Text,
+            Medium::Json,
             Medium::Code => match ($level) {
                 LanguageModelLevel::Basic,
-                LanguageModelLevel::Standard => 'gpt-3.5-turbo',
-                LanguageModelLevel::Advanced => 'gpt-4'
+                LanguageModelLevel::Standard => 'gpt-4o-mini',
+                LanguageModelLevel::Advanced => 'gpt-4o'
             },
 
             Medium::Image => 'dall-e-3',
@@ -174,11 +175,16 @@ class OpenAi implements Platform
     public function createAssistant(
         Assistant $assistant
     ): void {
+        $isJson = $assistant->getMedium() === Medium::Json;
+
         $response = $this->client->assistants()->create([
             'name' => $assistant->getName(),
             'instructions' => $assistant->getInstructions(),
             'description' => $assistant->getDescription(),
             'model' => $model = $assistant->getLanguageModelName() ?? self::FALLBACK_MODEL,
+            'response_format' => $isJson ?
+                ['type' => 'json_object'] :
+                'auto',
             'metadata' => [
                 'action' => $assistant->getAction(),
                 'model' => $model
@@ -373,8 +379,10 @@ class OpenAi implements Platform
             $response->lastId
         );
 
+        $medium = $thread->getMedium();
+
         foreach (array_reverse($response->data) as $messageData) {
-            $messageList->addMessage($this->createMessage($messageData));
+            $messageList->addMessage($this->createMessage($messageData, $medium));
         }
 
         return $messageList;
@@ -413,11 +421,12 @@ class OpenAi implements Platform
         $thread->setRawStatus($runResponse->status);
         $thread->setStatus($this->normalizeStatus($runResponse->status));
 
-        return $this->createMessage($messageResponse);
+        return $this->createMessage($messageResponse, $assistant->getMedium());
     }
 
     protected function createMessage(
-        ThreadMessageResponse $response
+        ThreadMessageResponse $response,
+        Medium $medium
     ): Message {
         $message = new Message(
             $response->id,
@@ -430,9 +439,13 @@ class OpenAi implements Platform
             }
         );
 
+        $textClass = $medium === Medium::Json ?
+            Content\Json::class :
+            Content\Text::class;
+
         foreach ($response->content as $contentData) {
             $content = match ($contentData->type) {
-                'text' => new Content\Text(
+                'text' => new $textClass(
                     /** @phpstan-ignore-next-line */
                     $contentData->text->value
                 ),

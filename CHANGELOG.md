@@ -1,4 +1,5 @@
-* Updated depdency versions
+* Added Json response support
+* Updated dependency versions
 
 ## v0.2.3 (2024-07-05)
 * Catch not-found errors in delete methods
