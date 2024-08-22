@@ -1,3 +1,5 @@
+* Converted consts to protected PascalCase
+
 ## v0.2.4 (2024-07-19)
 * Added Json response support
 * Updated dependency versions

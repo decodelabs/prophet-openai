@@ -28,7 +28,7 @@ use OpenAI\Responses\Threads\Messages\ThreadMessageResponse;
 
 class OpenAi implements Platform
 {
-    public const FALLBACK_MODEL = 'gpt-3.5-turbo';
+    protected const FallbackModel = 'gpt-3.5-turbo';
 
     protected OpenAIClient $client;
 
@@ -149,7 +149,7 @@ class OpenAi implements Platform
         foreach ($response->data as $result) {
             if (
                 ($result->metadata['action'] ?? null) === $action &&
-                ($result->metadata['model'] ?? $result->model) === ($assistant->getLanguageModelName() ?? self::FALLBACK_MODEL)
+                ($result->metadata['model'] ?? $result->model) === ($assistant->getLanguageModelName() ?? self::FallbackModel)
             ) {
                 if ($result->name !== null) {
                     $assistant->setName($result->name);
@@ -181,7 +181,7 @@ class OpenAi implements Platform
             'name' => $assistant->getName(),
             'instructions' => $assistant->getInstructions(),
             'description' => $assistant->getDescription(),
-            'model' => $model = $assistant->getLanguageModelName() ?? self::FALLBACK_MODEL,
+            'model' => $model = $assistant->getLanguageModelName() ?? self::FallbackModel,
             'response_format' => $isJson ?
                 ['type' => 'json_object'] :
                 'auto',
@@ -210,7 +210,7 @@ class OpenAi implements Platform
             'name' => $assistant->getName(),
             'instructions' => $assistant->getInstructions(),
             'description' => $assistant->getDescription() ?? '',
-            'model' => $assistant->getLanguageModelName() ?? self::FALLBACK_MODEL,
+            'model' => $assistant->getLanguageModelName() ?? self::FallbackModel,
             'metadata' => [
                 'action' => $assistant->getAction(),
                 'model' => $assistant->getLanguageModelName()
