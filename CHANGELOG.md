@@ -1,3 +1,11 @@
+## v0.2.6 (2025-02-15)
+* Upgraded PHPStan to v2
+* Updated dependencies
+* Tidied boolean logic
+* Fixed Exceptional syntax
+* Added PHP8.4 to CI workflow
+* Made PHP8.4 minimum version
+
 ## v0.2.5 (2024-08-21)
 * Converted consts to protected PascalCase
 
