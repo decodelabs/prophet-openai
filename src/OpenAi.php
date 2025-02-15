@@ -112,7 +112,9 @@ class OpenAi implements Platform
 
             Medium::Image => 'dall-e-3',
 
-            default => throw Exceptional::Runtime('Unsupported medium')
+            default => throw Exceptional::Runtime(
+                message: 'Unsupported medium'
+            )
         };
     }
 
@@ -398,7 +400,7 @@ class OpenAi implements Platform
     ): Message {
         if (null === ($serviceId = $thread->getServiceId())) {
             throw Exceptional::InvalidArgument(
-                'Thread has not been started'
+                message: 'Thread has not been started'
             );
         }
 
@@ -435,7 +437,9 @@ class OpenAi implements Platform
                 'assistant' => Role::Assistant,
                 'system' => Role::System,
                 'user' => Role::User,
-                default => throw Exceptional::Runtime('Unsupported role')
+                default => throw Exceptional::Runtime(
+                    message: 'Unsupported role'
+                )
             }
         );
 
@@ -454,7 +458,9 @@ class OpenAi implements Platform
                     $contentData->imageFile->fileId,
                     Medium::Image
                 ),
-                default => throw Exceptional::Runtime('Unsupported content type')
+                default => throw Exceptional::Runtime(
+                    message: 'Unsupported content type'
+                )
             };
 
             $message->addContent($content);
