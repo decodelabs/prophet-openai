@@ -11,8 +11,6 @@
 
 This package provides a Prophet adapter for the Open AI API, allowing you to easily create assistant interfaces using Open AI's chat models.
 
-_Get news and updates on the [DecodeLabs blog](https://blog.decodelabs.com)._
-
 ---
 
 ## Installation
