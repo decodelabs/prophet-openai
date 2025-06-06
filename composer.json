@@ -10,17 +10,17 @@
         } ],
     "require": {
         "php": "^8.4",
-        "decodelabs/exceptional": "^0.5.3",
-        "decodelabs/prophet": "^0.4.7",
+        "decodelabs/exceptional": "^0.6.1",
+        "decodelabs/prophet": "^0.4.11",
 
         "openai-php/client": "^0.10.3",
-        "nesbot/carbon": "^2|^3"
+        "nesbot/carbon": "^3"
     },
     "require-dev": {
         "decodelabs/phpstan-decodelabs": "^0.7",
 
-        "guzzlehttp/guzzle": "^7.9.2",
-        "guzzlehttp/psr7": "^2.7.0"
+        "guzzlehttp/guzzle": "^7.9.3",
+        "guzzlehttp/psr7": "^2.7.1"
     },
     "autoload": {
         "psr-4": {
