@@ -38,17 +38,11 @@ class OpenAi implements Platform
         $this->client = $client;
     }
 
-    /**
-     * Get platform name
-     */
     public function getName(): string
     {
         return 'OpenAi';
     }
 
-    /**
-     * Check if medium is supported
-     */
     public function supportsMedium(
         Medium $medium
     ): bool {
@@ -60,9 +54,6 @@ class OpenAi implements Platform
         };
     }
 
-    /**
-     * Check if feature is supported by medium
-     */
     public function supportsFeature(
         Medium $medium,
         Feature $feature
@@ -93,9 +84,6 @@ class OpenAi implements Platform
     }
 
 
-    /**
-     * Suggest language model based on medium and level
-     */
     public function suggestModel(
         Medium $medium,
         LanguageModelLevel $level = LanguageModelLevel::Standard,
@@ -118,9 +106,6 @@ class OpenAi implements Platform
         };
     }
 
-    /**
-     * Suggest if language model should be updated
-     */
     public function shouldUpdateModel(
         string $oldModel,
         string $newModel,
@@ -136,9 +121,6 @@ class OpenAi implements Platform
         };
     }
 
-    /**
-     * Lookup existing assistant against action in metadata
-     */
     public function findAssistant(
         Assistant $assistant
     ): bool {
@@ -171,9 +153,6 @@ class OpenAi implements Platform
         return false;
     }
 
-    /**
-     * Create new assistant structure
-     */
     public function createAssistant(
         Assistant $assistant
     ): void {
@@ -198,9 +177,6 @@ class OpenAi implements Platform
         $assistant->setUpdatedAt(Carbon::now());
     }
 
-    /**
-     * Update assistant model if needed
-     */
     public function updateAssistant(
         Assistant $assistant
     ): bool {
@@ -224,9 +200,6 @@ class OpenAi implements Platform
         return true;
     }
 
-    /**
-     * Delete assistant
-     */
     public function deleteAssistant(
         Assistant $assistant
     ): bool {
@@ -247,9 +220,6 @@ class OpenAi implements Platform
         return $response->deleted;
     }
 
-    /**
-     * Begin new thread
-     */
     public function startThread(
         Assistant $assistant,
         Thread $thread,
@@ -292,9 +262,6 @@ class OpenAi implements Platform
         $thread->setStatus($this->normalizeStatus($response->status));
     }
 
-    /**
-     * Check to see if run has completed
-     */
     public function refreshThread(
         Thread $thread
     ): void {
@@ -337,9 +304,6 @@ class OpenAi implements Platform
         $thread->setStatus($this->normalizeStatus($response->status));
     }
 
-    /**
-     * Delete thread
-     */
     public function deleteThread(
         Thread $thread
     ): bool {
@@ -359,9 +323,7 @@ class OpenAi implements Platform
         return $response->deleted;
     }
 
-    /**
-     * Fetch existing message on thread
-     */
+
     public function fetchMessages(
         Thread $thread,
         int $limit = 20,
@@ -390,9 +352,6 @@ class OpenAi implements Platform
         return $messageList;
     }
 
-    /**
-     * Send user reply message and create run
-     */
     public function reply(
         Assistant $assistant,
         Thread $thread,
@@ -469,9 +428,6 @@ class OpenAi implements Platform
         return $message;
     }
 
-    /**
-     * Convert text status to RunStats
-     */
     protected function normalizeStatus(
         ?string $status
     ): ?RunStatus {
