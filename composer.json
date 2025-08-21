@@ -10,11 +10,11 @@
         } ],
     "require": {
         "php": "^8.4",
-        "decodelabs/exceptional": "^0.6.1",
-        "decodelabs/prophet": "^0.4.11",
+        "decodelabs/exceptional": "^0.6.3",
+        "decodelabs/prophet": "^0.5.1",
 
         "openai-php/client": "^0.10.3",
-        "nesbot/carbon": "^3"
+        "nesbot/carbon": "^3.10.2"
     },
     "require-dev": {
         "decodelabs/phpstan-decodelabs": "^0.7",
