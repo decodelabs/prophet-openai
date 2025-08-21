@@ -5,8 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Unreleased
+--
+
+---
+
+### [v0.3.0](https://github.com/decodelabs/prophet-openai/commits/v0.3.0) - 21st August 2025
+
 - Updated Prophet to v0.5
 - Upgraded OpenAI API to v0.15
+
+[Full list of changes](https://github.com/decodelabs/prophet-openai/compare/v0.2.7...v0.3.0)
 
 ---
 
