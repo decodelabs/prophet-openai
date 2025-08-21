@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Unreleased
 - Updated Prophet to v0.5
+- Upgraded OpenAI API to v0.15
 
 ---
 
