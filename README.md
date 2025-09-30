@@ -15,6 +15,8 @@ This package provides a Prophet adapter for the Open AI API, allowing you to eas
 
 ## Installation
 
+This package requires PHP 8.4 or higher.
+
 Install via Composer:
 
 ```bash
