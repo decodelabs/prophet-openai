@@ -1,8 +1,8 @@
 <?php
 
 /**
- * @package Songsprout API
- * @license http://opensource.org/licenses/MIT
+ * Songsprout API
+ * @license https://opensource.org/licenses/MIT
  */
 
 declare(strict_types=1);
