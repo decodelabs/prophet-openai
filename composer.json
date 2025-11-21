@@ -4,12 +4,15 @@
     "type": "library",
     "keywords": [ ],
     "license": "MIT",
-    "authors": [ {
+    "authors": [
+        {
             "name": "Tom Wright",
             "email": "tom@inflatablecookie.com"
-        } ],
+        }
+    ],
     "require": {
         "php": "^8.4",
+
         "decodelabs/exceptional": "^0.6.3",
         "decodelabs/prophet": "^0.5.1",
 
@@ -17,6 +20,7 @@
         "nesbot/carbon": "^3"
     },
     "require-dev": {
+        "decodelabs/chorus": "^0.1",
         "decodelabs/phpstan-decodelabs": "^0.7",
 
         "guzzlehttp/guzzle": "^7.9.3",
@@ -37,7 +41,5 @@
             "php-http/discovery": true,
             "phpstan/extension-installer": true
         }
-    },
-    "repositories": {
     }
 }
