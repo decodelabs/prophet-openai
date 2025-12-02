@@ -20,7 +20,7 @@
         "nesbot/carbon": "^3"
     },
     "require-dev": {
-        "decodelabs/chorus": "^0.1",
+        "decodelabs/chorus": ">0",
         "decodelabs/phpstan-decodelabs": "^0.7",
 
         "guzzlehttp/guzzle": "^7.9.3",
