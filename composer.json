@@ -1,6 +1,6 @@
 {
     "name": "decodelabs/prophet-openai",
-    "description": "Open AI API adapter for the DecodeLabs Prophet assistant system",
+    "description": "OpenAI Responses adapter for DecodeLabs Prophet",
     "type": "library",
     "keywords": [ ],
     "license": "MIT",
@@ -14,26 +14,31 @@
         "php": "^8.4",
 
         "decodelabs/exceptional": "^0.6.3",
-        "decodelabs/prophet": "^0.5.1",
+        "decodelabs/prophet": "^0.6",
 
-        "openai-php/client": "^0.15",
-        "nesbot/carbon": "^3"
+        "openai-php/client": "^0.19"
     },
     "require-dev": {
         "decodelabs/chorus": ">0",
         "decodelabs/phpstan-decodelabs": "^0.7",
 
         "guzzlehttp/guzzle": "^7.9.3",
-        "guzzlehttp/psr7": "^2.7.1"
+        "guzzlehttp/psr7": "^2.7.1",
+        "phpunit/phpunit": "^11.5"
     },
     "autoload": {
         "psr-4": {
             "DecodeLabs\\Prophet\\Platform\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "DecodeLabs\\Prophet\\Platform\\Tests\\": "tests/"
+        }
+    },
     "extra": {
         "branch-alias": {
-            "dev-develop": "0.3.x-dev"
+            "dev-develop": "0.4.x-dev"
         }
     },
     "config": {

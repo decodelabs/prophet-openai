@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Unreleased
+- Rebuilt the adapter around one OpenAI Responses execution path
+- Removed assistant, thread, and conversation strategy orchestration
+- Simplified model selection to runtime override or level-based defaults
+- Normalized text and JSON output into Prophet `GenerationResult`
+- Ensured JSON-mode Responses requests include an explicit JSON instruction in input content
+- Updated the package to target Prophet `v0.6`
 - Improved doc comment headers
 - Added AGENTS.md
 - Integrated Chorus dev dependency
@@ -107,4 +113,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### [v0.1.0](https://github.com/decodelabs/prophet-openai/commits/v0.1.0) - 25th April 2024
 
 - Built initial implementation
-

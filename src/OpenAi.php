@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Songsprout API
+ * Prophet OpenAI
  * @license https://opensource.org/licenses/MIT
  */
 
@@ -9,33 +9,47 @@ declare(strict_types=1);
 
 namespace DecodeLabs\Prophet\Platform;
 
-use Carbon\Carbon;
 use DecodeLabs\Exceptional;
-use DecodeLabs\Prophet\Model\Assistant;
-use DecodeLabs\Prophet\Model\Content;
-use DecodeLabs\Prophet\Model\Message;
-use DecodeLabs\Prophet\Model\MessageList;
-use DecodeLabs\Prophet\Model\Role;
-use DecodeLabs\Prophet\Model\RunStatus;
-use DecodeLabs\Prophet\Model\Thread;
+use DecodeLabs\Prophet\Blueprint;
+use DecodeLabs\Prophet\GenerationOptions;
+use DecodeLabs\Prophet\GenerationResult;
 use DecodeLabs\Prophet\Platform;
-use DecodeLabs\Prophet\Service\Feature;
-use DecodeLabs\Prophet\Service\LanguageModelLevel;
+use DecodeLabs\Prophet\Platform\OpenAi\ModelPolicy;
 use DecodeLabs\Prophet\Service\Medium;
-use OpenAI\Client as OpenAIClient;
-use OpenAI\Exceptions\ErrorException as OpenAIErrorException;
-use OpenAI\Responses\Threads\Messages\ThreadMessageResponse;
+use DecodeLabs\Prophet\Subject;
+use DecodeLabs\Prophet\Usage;
+use OpenAI\Client;
+use OpenAI\Contracts\ClientContract;
+use OpenAI\Responses\Responses\CreateResponse;
+use ReflectionClass;
 
 class OpenAi implements Platform
 {
-    protected const FallbackModel = 'gpt-3.5-turbo';
-
-    protected OpenAIClient $client;
+    protected ModelPolicy $modelPolicy;
 
     public function __construct(
-        OpenAIClient $client
+        Client $client
     ) {
+        $this->initialize($client);
+    }
+
+    public static function fromClientContract(
+        ClientContract $client
+    ): self {
+        $output = (new ReflectionClass(self::class))
+            ->newInstanceWithoutConstructor();
+
+        $output->initialize($client);
+        return $output;
+    }
+
+    protected ClientContract $client;
+
+    protected function initialize(
+        ClientContract $client
+    ): void {
         $this->client = $client;
+        $this->modelPolicy = new ModelPolicy();
     }
 
     public function getName(): string
@@ -46,401 +60,166 @@ class OpenAi implements Platform
     public function supportsMedium(
         Medium $medium
     ): bool {
-        return match ($medium) {
-            Medium::Text,
-            Medium::Code,
-            Medium::Image => true,
-            default => false
-        };
+        return $this->modelPolicy->supportsMedium($medium);
     }
 
-    public function supportsFeature(
-        Medium $medium,
-        Feature $feature
-    ): bool {
-        if (!$this->supportsMedium($medium)) {
-            return false;
-        }
-
-        if ($medium === Medium::Image) {
-            return false;
-        }
-
-        return match ($feature) {
-            Feature::CodeCompletion => $medium === Medium::Code,
-
-            Feature::Chat,
-            Feature::Thread => true,
-
-            // Todo
-            Feature::Function => false,
-
-            Feature::TextFile,
-            Feature::PdfFile,
-            Feature::ImageFile,
-            Feature::VideoFile,
-            Feature::AudioFile => false
-        };
-    }
-
-
-    public function suggestModel(
-        Medium $medium,
-        LanguageModelLevel $level = LanguageModelLevel::Standard,
-        array $features = []
+    public function getDefaultModel(
+        Medium $medium
     ): string {
-        return match ($medium) {
-            Medium::Text,
-            Medium::Json,
-            Medium::Code => match ($level) {
-                LanguageModelLevel::Basic,
-                LanguageModelLevel::Standard => 'gpt-4o-mini',
-                LanguageModelLevel::Advanced => 'gpt-4o'
-            },
+        return $this->modelPolicy->getDefaultModel($medium);
+    }
 
-            Medium::Image => 'dall-e-3',
+    public function respond(
+        Blueprint $blueprint,
+        Subject $subject,
+        GenerationOptions $options
+    ): GenerationResult {
+        $medium = $blueprint->getMedium();
 
-            default => throw Exceptional::Runtime(
+        if (!$this->supportsMedium($medium)) {
+            throw Exceptional::Runtime(
                 message: 'Unsupported medium'
-            )
-        };
-    }
-
-    public function shouldUpdateModel(
-        string $oldModel,
-        string $newModel,
-        Medium $medium,
-        LanguageModelLevel $level = LanguageModelLevel::Standard,
-        array $features = []
-    ): bool {
-        return match ($oldModel) {
-            'gpt-3.5-turbo' => true,
-            //'gpt-4' => $newModel === 'gpt-4o',
-            'gpt-4o' => false,
-            default => true
-        };
-    }
-
-    public function findAssistant(
-        Assistant $assistant
-    ): bool {
-        $response = $this->client->assistants()->list([
-            'limit' => 50
-        ]);
-
-        $action = $assistant->getAction();
-
-        foreach ($response->data as $result) {
-            if (
-                ($result->metadata['action'] ?? null) === $action &&
-                ($result->metadata['model'] ?? $result->model) === ($assistant->getLanguageModelName() ?? self::FallbackModel)
-            ) {
-                if ($result->name !== null) {
-                    $assistant->setName($result->name);
-                }
-
-                if ($result->instructions !== null) {
-                    $assistant->setInstructions($result->instructions);
-                }
-
-                $assistant->setServiceId($result->id);
-                $assistant->setDescription($result->description);
-                $assistant->setCreatedAt(Carbon::createFromTimestamp($result->createdAt));
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    public function createAssistant(
-        Assistant $assistant
-    ): void {
-        $isJson = $assistant->getMedium() === Medium::Json;
-
-        $response = $this->client->assistants()->create([
-            'name' => $assistant->getName(),
-            'instructions' => $assistant->getInstructions(),
-            'description' => $assistant->getDescription(),
-            'model' => $model = $assistant->getLanguageModelName() ?? self::FallbackModel,
-            'response_format' => $isJson ?
-                ['type' => 'json_object'] :
-                'auto',
-            'metadata' => [
-                'action' => $assistant->getAction(),
-                'model' => $model
-            ]
-        ]);
-
-        $assistant->setServiceId($response->id);
-        $assistant->setCreatedAt(Carbon::now());
-        $assistant->setUpdatedAt(Carbon::now());
-    }
-
-    public function updateAssistant(
-        Assistant $assistant
-    ): bool {
-        if (null === ($serviceId = $assistant->getServiceId())) {
-            return false;
-        }
-
-        $response = $this->client->assistants()->modify($serviceId, [
-            'name' => $assistant->getName(),
-            'instructions' => $assistant->getInstructions(),
-            'description' => $assistant->getDescription() ?? '',
-            'model' => $assistant->getLanguageModelName() ?? self::FallbackModel,
-            'metadata' => [
-                'action' => $assistant->getAction(),
-                'model' => $assistant->getLanguageModelName()
-            ]
-        ]);
-
-        $assistant->setLanguageModelName($response->model);
-        $assistant->setUpdatedAt(Carbon::now());
-        return true;
-    }
-
-    public function deleteAssistant(
-        Assistant $assistant
-    ): bool {
-        if (null === ($serviceId = $assistant->getServiceId())) {
-            return false;
-        }
-
-        try {
-            $response = $this->client->assistants()->delete($serviceId);
-        } catch (OpenAIErrorException $e) {
-            if (str_starts_with($e->getMessage(), 'No assistant found with')) {
-                return true;
-            }
-
-            throw $e;
-        }
-
-        return $response->deleted;
-    }
-
-    public function startThread(
-        Assistant $assistant,
-        Thread $thread,
-        ?string $additionalInstructions = null
-    ): void {
-        $response = $this->client->threads()->createAndRun([
-            'assistant_id' => $assistant->getServiceId(),
-            'additional_instructions' => $additionalInstructions,
-            'thread' => [
-                'metadata' => [
-                    'action' => $thread->getAction(),
-                ]
-            ]
-        ]);
-
-        $thread->setServiceId($response->threadId);
-        $thread->setCreatedAt(Carbon::now());
-        $thread->setUpdatedAt(Carbon::now());
-
-        $thread->setStartedAt(
-            $response->startedAt ?
-                Carbon::createFromTimestamp($response->startedAt) :
-                null
-        );
-
-        $thread->setCompletedAt(
-            $response->completedAt ?
-                Carbon::createFromTimestamp($response->completedAt) :
-                null
-        );
-
-        $thread->setExpiresAt(
-            $response->expiresAt ?
-                Carbon::createFromTimestamp($response->expiresAt) :
-                null
-        );
-
-        $thread->setRunId($response->id);
-        $thread->setRawStatus($response->status);
-        $thread->setStatus($this->normalizeStatus($response->status));
-    }
-
-    public function refreshThread(
-        Thread $thread
-    ): void {
-        $serviceId = $thread->getServiceId();
-        $runId = $thread->getRunId();
-
-        if (
-            $serviceId === null ||
-            $runId === null
-        ) {
-            return;
-        }
-
-        $response = $this->client->threads()->runs()->retrieve(
-            $serviceId,
-            $runId
-        );
-
-        $thread->setUpdatedAt(Carbon::now());
-
-        $thread->setStartedAt(
-            $response->startedAt ?
-                Carbon::createFromTimestamp($response->startedAt) :
-                null
-        );
-
-        $thread->setCompletedAt(
-            $response->completedAt ?
-                Carbon::createFromTimestamp($response->completedAt) :
-                null
-        );
-
-        $thread->setExpiresAt(
-            $response->expiresAt ?
-                Carbon::createFromTimestamp($response->expiresAt) :
-                null
-        );
-
-        $thread->setRawStatus($response->status);
-        $thread->setStatus($this->normalizeStatus($response->status));
-    }
-
-    public function deleteThread(
-        Thread $thread
-    ): bool {
-        if (null === ($serviceId = $thread->getServiceId())) {
-            return false;
-        }
-
-        try {
-            $response = $this->client->threads()->delete($serviceId);
-        } catch (OpenAIErrorException $e) {
-            if (str_starts_with($e->getMessage(), 'No thread found with')) {
-                return true;
-            }
-
-            throw $e;
-        }
-        return $response->deleted;
-    }
-
-
-    public function fetchMessages(
-        Thread $thread,
-        int $limit = 20,
-        string|int|null $after = null
-    ): MessageList {
-        if (null === ($serviceId = $thread->getServiceId())) {
-            return new MessageList();
-        }
-
-        $response = $this->client->threads()->messages()->list($serviceId, [
-            'before' => $after,
-            'limit' => $limit
-        ]);
-
-        $messageList = new MessageList(
-            $response->hasMore,
-            $response->lastId
-        );
-
-        $medium = $thread->getMedium();
-
-        foreach (array_reverse($response->data) as $messageData) {
-            $messageList->addMessage($this->createMessage($messageData, $medium));
-        }
-
-        return $messageList;
-    }
-
-    public function reply(
-        Assistant $assistant,
-        Thread $thread,
-        string $message
-    ): Message {
-        if (null === ($serviceId = $thread->getServiceId())) {
-            throw Exceptional::InvalidArgument(
-                message: 'Thread has not been started'
             );
         }
 
-        $messageResponse = $this->client->threads()->messages()->create($serviceId, [
-            'role' => 'user',
-            'content' => $message
-        ]);
-
-        $runResponse = $this->client->threads()->runs()->create($thread->getServiceId(), [
-            'assistant_id' => $assistant->getServiceId()
-        ]);
-
-        $thread->setRunId($runResponse->id);
-        $thread->setUpdatedAt(Carbon::now());
-        $thread->setCompletedAt(
-            $runResponse->completedAt ?
-                Carbon::createFromTimestamp($runResponse->completedAt) :
-                null
+        $response = $this->client->responses()->create(
+            $this->buildCreateParameters($blueprint, $subject, $options)
         );
-        $thread->setRawStatus($runResponse->status);
-        $thread->setStatus($this->normalizeStatus($runResponse->status));
 
-        return $this->createMessage($messageResponse, $assistant->getMedium());
+        return $this->mapResponse(
+            medium: $medium,
+            model: $response->model,
+            response: $response
+        );
     }
 
-    protected function createMessage(
-        ThreadMessageResponse $response,
-        Medium $medium
-    ): Message {
-        $message = new Message(
-            $response->id,
-            Carbon::createFromTimestamp($response->createdAt),
-            match ($response->role) {
-                'assistant' => Role::Assistant,
-                'system' => Role::System,
-                'user' => Role::User,
-                default => throw Exceptional::Runtime(
-                    message: 'Unsupported role'
-                )
-            }
-        );
+    /**
+     * @param Blueprint<Subject> $blueprint
+     * @return array<string,mixed>
+     */
+    protected function buildCreateParameters(
+        Blueprint $blueprint,
+        Subject $subject,
+        GenerationOptions $options
+    ): array {
+        $medium = $blueprint->getMedium();
+        $output = [
+            'model' => $options->model ?? $blueprint->getDefaultModel() ?? $this->getDefaultModel($medium),
+            'instructions' => $instructions = trim($blueprint->getInstructions()),
+            'input' => $this->normalizeInput($blueprint->generateInput($subject), $medium)
+        ];
 
-        $textClass = $medium === Medium::Json ?
-            Content\Json::class :
-            Content\Text::class;
-
-        foreach ($response->content as $contentData) {
-            $content = match ($contentData->type) {
-                'text' => new $textClass(
-                    /** @phpstan-ignore-next-line */
-                    $contentData->text->value
-                ),
-                'image' => new Content\File(
-                    /** @phpstan-ignore-next-line */
-                    $contentData->imageFile->fileId,
-                    Medium::Image
-                ),
-                default => throw Exceptional::Runtime(
-                    message: 'Unsupported content type'
-                )
-            };
-
-            $message->addContent($content);
+        if ($instructions === '') {
+            unset($output['instructions']);
         }
 
-        return $message;
+        if ($options->temperature !== null) {
+            $output['temperature'] = $options->temperature;
+        }
+
+        if ($options->maxOutputTokens !== null) {
+            $output['max_output_tokens'] = $options->maxOutputTokens;
+        }
+
+        if ($options->user !== null) {
+            $output['user'] = $options->user;
+        }
+
+        if ($medium === Medium::Json) {
+            $output['text'] = [
+                'format' => [
+                    'type' => 'json_object'
+                ]
+            ];
+        }
+
+        return $output;
     }
 
-    protected function normalizeStatus(
-        ?string $status
-    ): ?RunStatus {
-        return match ($status) {
-            'queued' => RunStatus::Queued,
-            'in_progress' => RunStatus::InProgress,
-            'requires_action' => RunStatus::RequiresAction,
-            'cancelling' => RunStatus::Cancelling,
-            'cancelled' => RunStatus::Cancelled,
-            'failed' => RunStatus::Failed,
-            'completed' => RunStatus::Completed,
-            'expired' => RunStatus::Expired,
-            default => null
-        };
+    /**
+     * @param string|array<string,mixed>|null $input
+     * @return string|array<string,mixed>
+     */
+    protected function normalizeInput(
+        string|array|null $input,
+        Medium $medium
+    ): string|array {
+        if ($medium === Medium::Json) {
+            return $this->normalizeJsonInput($input);
+        }
+
+        if ($input === null) {
+            return '';
+        }
+
+        return $input;
+    }
+
+    /**
+     * @param string|array<string,mixed>|null $input
+     */
+    protected function normalizeJsonInput(
+        string|array|null $input
+    ): string {
+        if ($input === null) {
+            return 'Return JSON.';
+        }
+
+        if (is_array($input)) {
+            $input = json_encode($input, JSON_THROW_ON_ERROR);
+        }
+
+        if (stripos($input, 'json') !== false) {
+            return $input;
+        }
+
+        return "Return JSON.\n\n" . $input;
+    }
+
+    protected function mapResponse(
+        Medium $medium,
+        string $model,
+        CreateResponse $response
+    ): GenerationResult {
+        $text = $response->outputText;
+
+        if ($text === null) {
+            throw Exceptional::Runtime(
+                message: 'OpenAI response did not contain textual output'
+            );
+        }
+
+        return new GenerationResult(
+            platformName: $this->getName(),
+            model: $model,
+            medium: $medium,
+            text: $medium === Medium::Text ? $text : null,
+            json: $medium === Medium::Json ? $this->decodeJsonOutput($text) : null,
+            usage: $response->usage !== null ? new Usage(
+                inputTokens: $response->usage->inputTokens,
+                outputTokens: $response->usage->outputTokens,
+                totalTokens: $response->usage->totalTokens,
+                raw: $response->usage->toArray()
+            ) : null,
+            raw: $response
+        );
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    protected function decodeJsonOutput(
+        string $text
+    ): array {
+        $output = json_decode($text, true);
+
+        if (!is_array($output)) {
+            throw Exceptional::Runtime(
+                message: 'OpenAI response was not valid JSON'
+            );
+        }
+
+        /** @var array<string,mixed> $output */
+        return $output;
     }
 }

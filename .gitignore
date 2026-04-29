@@ -8,4 +8,6 @@ Thumbs.db
 /.idea
 /.env
 
+.phpunit.cache
 effigy.json
+.effigy
