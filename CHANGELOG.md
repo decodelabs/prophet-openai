@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Unreleased
+--
+
+---
+
+### [v0.4.0](https://github.com/decodelabs/prophet-openai/commits/v0.4.0) - 29th April 2026
+
 - Rebuilt the adapter around one OpenAI Responses execution path
 - Removed assistant, thread, and conversation strategy orchestration
 - Simplified model selection to runtime override or level-based defaults
@@ -15,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added AGENTS.md
 - Integrated Chorus dev dependency
 - Simplified CI workflow
+
+[Full list of changes](https://github.com/decodelabs/prophet-openai/compare/v0.3.0...v0.4.0)
 
 ---
 
